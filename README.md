@@ -14,8 +14,10 @@ Usage
     $ ansible-playbook migrate_vm.yml --ask-vault -e "vms_to_migrate=HostedEngine" -e "cluster_migrate_to=L1"
 
 Arguments:
+
     vms_to_migrate: vm to migrate
     
     cluster_migrate_to: cluster where you want to migrate vm
     
     host_migrate_to: host where you want to migrate vm (host from another cluster)
+    
