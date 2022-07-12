@@ -15,8 +15,8 @@
     - name: rhv login
       ovirt_auth:
         url: "{{ rhv_api }}/ovirt-engine/api"
-        username: "{{ rhv_user }}"
-        password: "{{ rhv_pass }}"
+        username: "{{ admin }}"
+        password: "{{ password }}"
 
     - name: check vm param
       fail:
