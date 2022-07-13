@@ -1,4 +1,4 @@
-# ansible-playbook migrate_vm.yml --ask-vault -e "vms_to_migrate=cshaovm01" -e "cluster_migrate_to=L1" -e "host_migrate_to=rhv03.local.net"
+# ansible-playbook migrate_vm.yml --ask-vault -e "vms_to_migrate=cshaovm01" -e "cluster_migrate_to=L1" -e "host_migrate_to=migratehost1"
 ---
 #########################################
 # This playbook has NO support          #
