@@ -1,8 +1,12 @@
-Playbook was created to migrate vm between RHV Clusters.
 # Ansible  - Playbook to migrate vms to migrate cross-cluster
 
+Playbook was created to migrate vm between RHV Clusters.
 
+
+## Usage
 Usage
+  - Create ansible variables file vars/rhv.yml, with your RHV Engine information. it is recommended create a [ansible-vault](https://docs.ansible.com/ansible/latest/user_guide/playbooks_vault.html) file
+```
     Make sure all the required software is installed.
     git clone repository
     Create ansible variables file vars/rhv.yml, with your RHV Engine information. it is recommended create a ansible-vault file
