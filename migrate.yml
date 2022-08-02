@@ -1,11 +1,7 @@
-# ansible-playbook migrate_vm.yml --ask-vault -e "vms_to_migrate=cshaovm01" -e "cluster_migrate_to=L1" -e "host_migrate_to=migratehost1"
+# ansible-playbook migrate_vm.yml --ask-vault -e "vms_to_migrate=cshaovm01" -e "cluster_migrate_to=L1" -e "host_migrate_to=cshaohost1"
 ---
-#########################################
-# This playbook has NO support          #
-# from Red Hat Global Support Services  #
-#########################################
 - hosts: 10.73.198.206
-  connection: localhost
+  connection: cshaohost1
   gather_facts: false
 
   vars_files:
