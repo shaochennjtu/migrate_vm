@@ -14,7 +14,7 @@ rhv_pass: "password"
 
 - Run playbook as follows:
 ```
-    $ ansible-playbook migrate_vm.yml --ask-vault -e "vms_to_migrate=cshaovm01" -e "cluster_migrate_to=Cluster" -e "host_migrate_to=migratehost1"
+    $ ansible-playbook migrate_vm.yml --ask-vault -e "vms_to_migrate=cshaovm01" -e "cluster_migrate_to=Cluster" -e "host_migrate_to=cshaohost1"
     $ ansible-playbook migrate_vm.yml --ask-vault -e "vms_to_migrate=cshaovm01" -e "cluster_migrate_to=L1"
 
 ```
