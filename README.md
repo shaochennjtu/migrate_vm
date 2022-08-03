@@ -1,6 +1,6 @@
-# Ansible  - Playbook to migrate vms to migrate cross-cluster
+# Ansible  - Playbook to test migrate vm inside RHV.
 
-Playbook was created to migrate vm between RHV Clusters.
+This playbook can be used to test migrate vm inside RHV.
 
 
 ## Usage
@@ -11,6 +11,7 @@ rhv_api: "https://bootp-xx-xx-xx.lab.eng.pek2.redhat.com/ovirt-engine/ "
 rhv_user: "admin@internal"
 rhv_pass: "password"
 ```
+
 
 ## Running the Playbook
 To run the playbook, execute the ansible-playbook command as follows:
