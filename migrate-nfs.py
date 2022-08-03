@@ -2,14 +2,124 @@
 
 # RHV Storage Migration with NFS storage
 
-from rhvsdk.api import API
-from rhvsdk.xml import params
-from email.MIMEMultipart import MIMEMultipart
-from email.MIMEText import MIMEText
+import logging
+import requests
 import os
 import time
-import smtplib
-import sys
+import re
+from fabric.api import settings, run
+from ..helpers import CheckComm
+from ..helpers.rhvm_api import RhevmAction
+from check_points import CheckPoints
+
+log = logging.getLogger('bender')
+
+
+def _get_nfs_info(self):
+    log.info("Getting NFS storage informations...")
+
+    self._nfs_ip = CONST.NFS_INFO.get("ip")
+    self._nfs_pass = CONST.NFS_INFO.get("password")
+    self._nfs_data_path = CONST.NFS_INFO.get("data_path")
+    log.info("Getting NFS finished.")
+
+    
+def _get_disk_size(self):
+    log.info("Getting disk size...")
+    self._disk_size = CONST.DISK_INFO.get("size")
+    log.info("Getting disk size finished.")
+
+#Create VMs, attach disk to VMs
+def _create_vm(self, vm_name, cluster_name):
+    log.info("Creating VM %s", vm_name)
+    self._rhvm.create_vm(vm_name=vm_name, cluster_name=cluster_name)
+    time.sleep(30)
+
+        
+#Create a float disk for vm using
+def _create_float_disk(self, disk_name):
+    log.info("Creating a float disk for VM")
+        
+    disk_type = "nfs"
+    sd_name = self._sd_name
+
+    if disk_type == "localfs" or disk_type == "nfs":
+        disk_size = self._disk_size
+        self._rhvm.create_float_image_disk(sd_name, disk_name, disk_size)
+        
+    time.sleep(60)
+
+    
+def _attach_disk_to_vm(self, vm_name, disk_name):
+    log.info("Attaching the float disk to VM %s", vm_name)
+    bootable = True
+    self._rhvm.attach_disk_to_vm(disk_name, vm_name, bootable=bootable)
+    time.sleep(30)
+
+    
+def _create_vms_with_disk(self,vm_quantity=1):
+    log.info("Creating VMs with disk...")
+    try:
+        cluster_name = self._cluster_name
+
+        value = 1
+        while value <= vm_quantity:
+            vm_name = self._vm_name + '_vm' + str(value)
+            disk_name = vm_name + '_Disk1'
+                
+            # Create the vm
+            self._create_vm(vm_name, cluster_name)
+                
+            # Get disk info
+            self._get_disk_size()
+
+            # Create the float disk
+            self._create_float_disk(disk_name)
+
+            # Attach the disk to vm
+            self._attach_disk_to_vm(vm_name, disk_name)
+
+            value += 1
+
+    except Exception as e:
+        log.exception(e)
+        return False
+    return True
+
+
+#Operations on VM
+def _wait_vm_status(self, vm_name, expect_status):
+    log.info("Waitting the VM to status %s" % expect_status)
+    i = 0
+    vm_status = "unknown"
+    while True:
+        if i > 30:
+            log.error("VM status is %s, not %s" % (vm_status, expect_status))
+            return False
+        vm_status = self._rhvm.list_vm(vm_name)['status']
+        log.info("The VM status is: %s" % vm_status)
+        if vm_status == expect_status:
+            return True
+        time.sleep(10)
+        i += 1
+
+
+def _start_vm(self, vm_name):
+    log.info("Start up the VM %s" % vm_name)
+
+    try:
+        self._rhvm.operate_vm(vm_name, 'start')
+        time.sleep(60)
+
+        # Wait the vm is up
+        self._wait_vm_status(vm_name, 'up')
+
+    except Exception as e:
+        log.exception(e)
+        return False
+
+    log.info("Start VM %s finished.", vm_name)
+    return True
 
 
 def connect(rhvm_api_url, rhv_username, rhv_password):
@@ -27,8 +137,7 @@ def get_vms_to_migrate(rhvm_api, search_query):
     return vms_to_migrate
 
 
-def migrate_disks(rhvm_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_mount_dir, migrate_tag, ceph_pool,
-                  ceph_client, ceph_conf_file):
+def migrate_disks(rhvm_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_mount_dir, migrate_tag):
     completed_vms = []
     failed_vms = []
     for vm in vms_to_migrate:
@@ -47,8 +156,7 @@ def migrate_disks(rhvm_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_
                         print("[{}] Converting '{}' from RBD to NFS...".format(vm.name, disk.name))
                         image_path = find_image(new_storage_id, new_disk, nfs_mount_dir)
                         if image_path:
-                            if os.system("qemu-img convert -p -O raw rbd:{}/volume-{}:id={}:conf={} {}".format(
-                                                     ceph_pool, disk.id, ceph_client, ceph_conf_file, image_path)) == 0:
+                            if os.system("qemu-img convert -p -O raw rbd:{}/volume-{}:id={}:conf={} {}".format(image_path)) == 0:
                                 attach_detach_disk(vm, disk, new_disk)
                                 set_boot_order(vm)
                                 print("[{}] Sucessfully migrated '{}'!".format(vm.name, disk.name))
@@ -154,59 +262,21 @@ def error_message(vm, disk, failed_vms):
     disk.activate()
 
 
-def email_report(completed_vms, failed_vms, mail_from, mail_to, mail_subject, mail_smtp_server):
-    sender = mail_from
-    receivers = mail_to
-    msg = MIMEMultipart()
-    msg['From'] = sender
-    msg['To'] = receivers
-    msg['Subject'] = mail_subject
-
-    body = "Successful VM Migrations:\n" \
-           "{}\n\n" \
-           "Failed VM Migrations:\n" \
-           "{}".format("\n".join(completed_vms), "\n".join(failed_vms))
-    msg.attach(MIMEText(body, 'plain'))
-    text = msg.as_string()
-    if completed_vms or failed_vms:
-        try:
-            server = smtplib.SMTP(mail_smtp_server, 25)
-            server.starttls()
-            server.sendmail(sender, receivers, text)
-            server.quit()
-            print("Successfully sent email report.")
-        except:
-            print("ERROR: Unable to send email report!")
-
-
-if __name__ == "__main__":
-    if os.path.isfile('.rhv_migration_lock'):
-        sys.exit("Lockfile exists. Exiting.")
-    else:
-        open('.rhv_migration_lock', 'a').close()
-
     rhvm_api_url = 'https://{rhevm_fqdn}/ovirt-engine/api/{item}'
     rhv_username = ''
     rhv_password = ''
-    ceph_conf_file = '/etc/ceph/ceph.conf'
-    ceph_client = 'admin'
 
-    ceph_pool = 'rbd'
+
     old_storage_id = ''
     new_storage_id = ''
     nfs_mount_dir = ''
     migrate_tag = 'Migrate_to_NFS'
     search_query = 'Storage.name= Status=down Tag={}'.format(migrate_tag)
 
-    mail_from = ''
-    mail_to = ''
-    mail_subject = 'rhv NFS Migration Report'
-    mail_smtp_server = ''
-
+   
     rhvm_api = connect(rhvm_api_url, rhv_username, rhv_password)
     vms_to_migrate = get_vms_to_migrate(rhvm_api, search_query)
     completed_vms, failed_vms = migrate_disks(rhvm_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_mount_dir,
-                                              migrate_tag, ceph_pool, ceph_client, ceph_conf_file)
+                                              migrate_tag)
     print("No more VMs to migrate.")
-    email_report(completed_vms, failed_vms, mail_from, mail_to, mail_subject, mail_smtp_server)
     os.remove('.rhv_migration_lock')
