@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
-# RHV Storage Migration
-# Cinder/Ceph -> NFS
-# Author: Jordan Rodgers (com6056@gmail.com)
-# Written for KGCOE at RIT (https://www.rit.edu/kgcoe/)
+# RHV Storage Migration with NFS storage
 
 from rhvsdk.api import API
 from rhvsdk.xml import params
@@ -15,22 +12,22 @@ import smtplib
 import sys
 
 
-def connect(rhv_api_url, rhv_username, rhv_password):
+def connect(rhvm_api_url, rhv_username, rhv_password):
     VERSION = params.Version(major='4', minor='0')
-    rhv_api = API(url=rhv_api_url, username=rhv_username, password=rhv_password, insecure=True)
+    rhvm_api = API(url=rhvm_api_url, username=rhv_username, password=rhv_password, insecure=True)
 
-    return rhv_api
+    return rhvm_api
 
 
-def get_vms_to_migrate(rhv_api, search_query):
+def get_vms_to_migrate(rhvm_api, search_query):
     vms_to_migrate = []
-    for vm in rhv_api.vms.list(query=search_query):
+    for vm in rhvm_api.vms.list(query=search_query):
         print("'{}' is set to be migrated.".format(vm.name))
         vms_to_migrate.append(vm)
     return vms_to_migrate
 
 
-def migrate_disks(rhv_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_mount_dir, migrate_tag, ceph_pool,
+def migrate_disks(rhvm_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_mount_dir, migrate_tag, ceph_pool,
                   ceph_client, ceph_conf_file):
     completed_vms = []
     failed_vms = []
@@ -46,7 +43,7 @@ def migrate_disks(rhv_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_m
                     try:
                         deactivate_disk(vm, disk)
                         print("[{}] Attempting to migrate '{}' to NFS...".format(vm.name, disk.name))
-                        new_disk = create_nfs_disk(rhv_api, new_storage_id, disk, vm)
+                        new_disk = create_nfs_disk(rhvm_api, new_storage_id, disk, vm)
                         print("[{}] Converting '{}' from RBD to NFS...".format(vm.name, disk.name))
                         image_path = find_image(new_storage_id, new_disk, nfs_mount_dir)
                         if image_path:
@@ -94,9 +91,9 @@ def deactivate_disk(vm, disk):
             time.sleep(3)
 
 
-def create_nfs_disk(rhv_api, new_storage_id, disk, vm):
+def create_nfs_disk(rhvm_api, new_storage_id, disk, vm):
     print("[{}] Creating an NFS image for '{}'...".format(vm.name, disk.name))
-    new_storage_domain = rhv_api.storagedomains.get(id=new_storage_id)
+    new_storage_domain = rhvm_api.storagedomains.get(id=new_storage_id)
     disk_params = params.Disk()
     disk_params.set_alias(disk.name)
     disk_params.set_size(disk.size)
@@ -188,7 +185,7 @@ if __name__ == "__main__":
     else:
         open('.rhv_migration_lock', 'a').close()
 
-    rhv_api_url = 'https://rhv.example.com/rhv-engine/api/'
+    rhvm_api_url = 'https://{rhevm_fqdn}/ovirt-engine/api/{item}'
     rhv_username = ''
     rhv_password = ''
     ceph_conf_file = '/etc/ceph/ceph.conf'
@@ -206,9 +203,9 @@ if __name__ == "__main__":
     mail_subject = 'rhv NFS Migration Report'
     mail_smtp_server = ''
 
-    rhv_api = connect(rhv_api_url, rhv_username, rhv_password)
-    vms_to_migrate = get_vms_to_migrate(rhv_api, search_query)
-    completed_vms, failed_vms = migrate_disks(rhv_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_mount_dir,
+    rhvm_api = connect(rhvm_api_url, rhv_username, rhv_password)
+    vms_to_migrate = get_vms_to_migrate(rhvm_api, search_query)
+    completed_vms, failed_vms = migrate_disks(rhvm_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_mount_dir,
                                               migrate_tag, ceph_pool, ceph_client, ceph_conf_file)
     print("No more VMs to migrate.")
     email_report(completed_vms, failed_vms, mail_from, mail_to, mail_subject, mail_smtp_server)
