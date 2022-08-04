@@ -1,7 +1,6 @@
 # Migrate virtual machines from one host to another in the RHV environment.
 
-Live migration is useful to support maintenance tasks on hosts without disrupting your running virtual machines.
-Live migration refers to the process of moving a virtual machine from one physical host to another while it is running. 
+Live migration provides the ability to move a running virtual machine between physical hosts with no interruption to service. The virtual machine’s RAM is copied from the source host to the destination host. Storage and network connectivity are not altered.
 
 # RHVM moves the following contents of the virtual machine from the original host machine to the destination. 
   - Memory
