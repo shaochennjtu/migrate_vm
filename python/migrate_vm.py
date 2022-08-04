@@ -1,19 +1,14 @@
 #!/usr/bin/env python
 
-# RHV Storage Migration with NFS storage
+# VM Migration with NFS storage
 
 import logging
 import requests
 import os
 import time
-import re
-from fabric.api import settings, run
-from ..helpers import CheckComm
-from ..helpers.rhvm_api import RhevmAction
-from check_points import CheckPoints
+from rhvm_api import RhevmAction
 
 log = logging.getLogger('bender')
-
 
 
 def connect(rhvm_api_url, rhv_username, rhv_password):
@@ -122,7 +117,7 @@ def find_image(new_storage_id, new_disk, nfs_mount_dir):
 
 
 def attach_detach_disk(vm, disk, new_disk):
-    print("[{}] Attaching the '{}' Cinder volume to the VM...".format(vm.name, disk.name))
+    print("[{}] Attaching the '{}' NFS volume to the VM...".format(vm.name, disk.name))
     vm.disks.add(params.Disk(id=new_disk.id, active=True))
     print("[{}] Detaching the '{}' NFS volume from the VM...".format(vm.name, disk.name))
     disk.delete(action=params.Action(detach=True))
