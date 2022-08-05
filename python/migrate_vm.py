@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
-# VM Migration with NFS storage
+“”“
+This VM Migration is for NFS storage
+This is not live migration (Live migration must inclde copy memory step)
+Migration steps incldes migrate disk, deactivate disk, create new image for vm
+”“”
 
 import logging
-import requests
 import os
-import time
-from rhvm_api import RhevmAction
+import rhvm_api
 
 log = logging.getLogger('bender')
 
