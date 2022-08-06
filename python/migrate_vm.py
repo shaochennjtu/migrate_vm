@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 “”“
-This VM Migration is for NFS storage
+This VM Migration code is suit for NFS storage
 This is not live migration (Live migration must inclde copy memory step)
 Migration steps incldes migrate disk, deactivate disk, create new image for vm
 ”“”
