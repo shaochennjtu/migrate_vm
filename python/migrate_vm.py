@@ -12,9 +12,9 @@ import rhvm_api
 
 log = logging.getLogger('bender')
 
-
+#login to rhvm
 def connect(rhvm_api_url, rhv_username, rhv_password):
-    VERSION = params.Version(major='4', minor='0')
+    VERSION = params.Version(major='4', minor='5')
     rhvm_api = API(url=rhvm_api_url, username=rhv_username, password=rhv_password, insecure=True)
 
     return rhvm_api
