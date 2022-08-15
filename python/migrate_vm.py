@@ -10,16 +10,16 @@ import logging
 import os
 import rhvm_api
 
-log = logging.getLogger('bender')
+log = logging.getLogger('log')
 
-#login to rhvm
+# connect to rhvm api
 def connect(rhvm_api_url, rhv_username, rhv_password):
     VERSION = params.Version(major='4', minor='5')
     rhvm_api = API(url=rhvm_api_url, username=rhv_username, password=rhv_password, insecure=True)
 
     return rhvm_api
 
-
+# prepare to migration vm
 def get_vms_to_migrate(rhvm_api, search_query):
     vms_to_migrate = []
     for vm in rhvm_api.vms.list(query=search_query):
@@ -27,7 +27,7 @@ def get_vms_to_migrate(rhvm_api, search_query):
         vms_to_migrate.append(vm)
     return vms_to_migrate
 
-
+# start to migrate vm disks
 def migrate_disks(rhvm_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_mount_dir, migrate_tag):
     completed_vms = []
     failed_vms = []
@@ -65,7 +65,7 @@ def migrate_disks(rhvm_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_
             remove_tag(vm, completed_vms, migrate_tag)
     return completed_vms, failed_vms
 
-
+# remove snapshts
 def remove_snapshots(vm):
     print("[{}] Checking VM for snapshots...".format(vm.name))
     snapshots = vm.snapshots.list()
@@ -81,7 +81,7 @@ def remove_snapshots(vm):
                     time.sleep(3)
                     new_snapshots = vm.snapshots.list()
 
-
+# start deactivate vm disk
 def deactivate_disk(vm, disk):
     print("[{}] Deactivating '{}' for migration...".format(vm.name, disk.name))
     if disk.active:
@@ -89,7 +89,7 @@ def deactivate_disk(vm, disk):
         while not disk.active:
             time.sleep(3)
 
-
+#create new disk in nfs storage
 def create_nfs_disk(rhvm_api, new_storage_id, disk, vm):
     print("[{}] Creating an NFS image for '{}'...".format(vm.name, disk.name))
     new_storage_domain = rhvm_api.storagedomains.get(id=new_storage_id)
@@ -104,7 +104,7 @@ def create_nfs_disk(rhvm_api, new_storage_id, disk, vm):
         time.sleep(3)
     return new_disk
 
-
+# find new image path
 def find_image(new_storage_id, new_disk, nfs_mount_dir):
     image_path = "{}/{}/images/{}/".format(nfs_mount_dir, new_storage_id, new_disk.id)
     image_dir_files = os.listdir(image_path)
@@ -117,19 +117,19 @@ def find_image(new_storage_id, new_disk, nfs_mount_dir):
                 return image_path
     return False
 
-
+# attach/detach vm disk
 def attach_detach_disk(vm, disk, new_disk):
     print("[{}] Attaching the '{}' NFS volume to the VM...".format(vm.name, disk.name))
     vm.disks.add(params.Disk(id=new_disk.id, active=True))
     print("[{}] Detaching the '{}' NFS volume from the VM...".format(vm.name, disk.name))
     disk.delete(action=params.Action(detach=True))
 
-
+# set vm boot order
 def set_boot_order(vm):
     vm.set_os(params.OperatingSystem(boot=[params.Boot(dev='hd')]))
     vm.update()
 
-
+# check vm status
 def check_vm(vm, old_storage_id):
     disks = vm.disks.list()
     for disk in disks:
@@ -138,14 +138,14 @@ def check_vm(vm, old_storage_id):
                 return False
     return True
 
-
+# remove vm tag
 def remove_tag(vm, completed_vms, migrate_tag):
     completed_vms.append(vm.name)
     for tag in vm.tags.list():
         if tag.name == migrate_tag:
             tag.delete()
 
-
+# print error message
 def error_message(vm, disk, failed_vms):
     failed_vms.append("{} ({})".format(vm.name, disk.name))
     print("[{}] ERROR: Could not migrate '{}'. Reactivating original disk. "
