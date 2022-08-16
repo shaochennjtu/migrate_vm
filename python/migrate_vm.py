@@ -10,8 +10,6 @@ import logging
 import os
 import rhvm_api
 
-log = logging.getLogger('log')
-
 # connect to rhvm api
 def connect(rhvm_api_url, rhv_username, rhv_password):
     VERSION = params.Version(major='4', minor='5')
@@ -33,8 +31,6 @@ def migrate_disks(rhvm_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_
     failed_vms = []
     for vm in vms_to_migrate:
         print("Starting migration for '{}'.".format(vm.name))
-        remove_snapshots(vm)
-        print("[{}] Checking for disks to migrate...".format(vm.name))
         disks = vm.disks.list()
         for disk in disks:
             for storage_domain in disk.storage_domains.storage_domain:
@@ -65,21 +61,6 @@ def migrate_disks(rhvm_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_
             remove_tag(vm, completed_vms, migrate_tag)
     return completed_vms, failed_vms
 
-# remove snapshts
-def remove_snapshots(vm):
-    print("[{}] Checking VM for snapshots...".format(vm.name))
-    snapshots = vm.snapshots.list()
-    if len(snapshots) > 1:
-        removed_snaps = 0
-        for snapshot in snapshots:
-            if snapshot.description != 'Active VM' and snapshot.description != 'Active VM snapshot':
-                print("[{}] Removing snapshot '{}'...".format(vm.name, snapshot.description))
-                snapshot.delete()
-                removed_snaps += 1
-                new_snapshots = vm.snapshots.list()
-                while len(new_snapshots) > len(snapshots) - removed_snaps:
-                    time.sleep(3)
-                    new_snapshots = vm.snapshots.list()
 
 # start deactivate vm disk
 def deactivate_disk(vm, disk):
