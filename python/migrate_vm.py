@@ -11,9 +11,9 @@ import os
 import rhvm_api
 
 # connect to rhvm api
-def connect(rhvm_api_url, rhv_username, rhv_password):
+def connect(api_url, user, password):
     VERSION = params.Version(major='4', minor='5')
-    rhvm_api = API(url=rhvm_api_url, username=rhv_username, password=rhv_password, insecure=True)
+    rhvm_api = API(url=api_url, user=rhv_username, password=rhv_password, insecure=True)
 
     return rhvm_api
 
@@ -134,9 +134,9 @@ def error_message(vm, disk, failed_vms):
     disk.activate()
 
 
-    rhvm_api_url = 'https://{rhevm_fqdn}/ovirt-engine/api/{item}'
-    rhv_username = ''
-    rhv_password = ''
+    api_url = "https://{rhevm_fqdn}/ovirt-engine/api/{item}"
+    user = ''
+    password = ''
 
 
     old_storage_id = ''
@@ -146,7 +146,7 @@ def error_message(vm, disk, failed_vms):
     search_query = 'Storage.name= Status=down Tag={}'.format(migrate_tag)
 
    
-    rhvm_api = connect(rhvm_api_url, rhv_username, rhv_password)
+    rhvm_api = connect(api_url, user, password)
     vms_to_migrate = get_vms_to_migrate(rhvm_api, search_query)
     completed_vms, failed_vms = migrate_disks(rhvm_api, vms_to_migrate, old_storage_id, new_storage_id, nfs_mount_dir,
                                               migrate_tag)
