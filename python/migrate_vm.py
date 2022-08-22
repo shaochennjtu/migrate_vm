@@ -14,7 +14,6 @@ import rhvm_api
 def connect(api_url, user, password):
     VERSION = params.Version(major='4', minor='5')
     rhvm_api = API(url=api_url, user=rhv_username, password=rhv_password, insecure=True)
-
     return rhvm_api
 
 # prepare to migration vm
