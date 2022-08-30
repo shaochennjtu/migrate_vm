@@ -6,8 +6,7 @@ This is not live migration (Live migration must inclde copy memory step)
 Migration steps incldes migrate disk, deactivate disk, create new image for vm
 ”“”
 
-import logging
-import os
+
 import rhvm_api
 
 # connect to rhvm api
